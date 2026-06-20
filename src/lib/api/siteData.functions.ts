@@ -15,3 +15,14 @@ export const saveSiteData = createServerFn({ method: "POST" })
     writeDB(data);
     return { success: true };
   });
+
+// Server-side admin login using environment variable!
+export const adminLogin = createServerFn({ method: "POST" })
+  .validator(z.object({ password: z.string() }))
+  .handler(async ({ data }) => {
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "gokulam2024";
+    if (data.password === ADMIN_PASSWORD) {
+      return { success: true };
+    }
+    return { success: false, error: "Invalid password" };
+  });

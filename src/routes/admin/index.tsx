@@ -1,7 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { adminLogin, isAdminLoggedIn } from "@/lib/adminData";
+import { adminLogin } from "@/lib/api/siteData.functions";
 import { Plane, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+
+// Keep simple client-side check using sessionStorage (server-side validation on actions)
+const AUTH_KEY = "gokulam_admin_auth";
+function isAdminLoggedIn() {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(AUTH_KEY) === "1";
+}
 
 export const Route = createFileRoute("/admin/")({
   component: AdminLogin,
@@ -20,19 +27,25 @@ function AdminLogin() {
     }
   }, [navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setTimeout(() => {
-      const ok = adminLogin(password);
-      if (ok) {
+
+    try {
+      const result = await adminLogin({ data: { password } });
+      if (result.success) {
+        sessionStorage.setItem(AUTH_KEY, "1");
         navigate({ to: "/admin/dashboard" });
       } else {
-        setError("Incorrect password. Please try again.");
+        setError(result.error || "Incorrect password. Please try again.");
         setLoading(false);
       }
-    }, 500);
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (

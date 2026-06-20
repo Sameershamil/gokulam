@@ -1,12 +1,23 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { isAdminLoggedIn, adminLogout, type SiteData } from "@/lib/adminData";
+import { type SiteData } from "@/lib/adminData";
 import { useSiteData } from "@/context/SiteDataContext";
 import {
   Plane, LogOut, Home, Phone, Star, MapPin, Package, Users,
   Heart, Info, Image, LayoutDashboard, ChevronRight, Save,
   RotateCcw, CheckCircle, Menu, X,
 } from "lucide-react";
+
+// Auth helpers (same as login page)
+const AUTH_KEY = "gokulam_admin_auth";
+function isAdminLoggedIn() {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(AUTH_KEY) === "1";
+}
+function adminLogout() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(AUTH_KEY);
+}
 
 // Section editors
 import { ContactEditor } from "@/components/admin/ContactEditor";
