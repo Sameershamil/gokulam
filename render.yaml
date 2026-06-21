@@ -11,6 +11,4 @@ services:
       - key: PORT
         value: 10000
       - key: MONGODB_URI
-        fromDatabase:
-          name: gokulam-mongo
-          property: connectionString
+        sync: false
