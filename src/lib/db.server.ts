@@ -45,11 +45,18 @@ function writeDBFallback(data: SiteData): void {
 // MongoDB URI from environment variables
 const MONGODB_URI = process.env.MONGODB_URI || "";
 
-// Mongoose connection caching
-let cached = global.mongoose;
+// Mongoose connection caching with type assertion
+const globalForMongoose = global as unknown as {
+  mongoose: {
+    conn: typeof mongoose | null;
+    promise: Promise<typeof mongoose> | null;
+  };
+};
+
+let cached = globalForMongoose.mongoose;
 
 if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+  cached = globalForMongoose.mongoose = { conn: null, promise: null };
 }
 
 async function dbConnect(): Promise<typeof mongoose | null> {
@@ -69,7 +76,8 @@ async function dbConnect(): Promise<typeof mongoose | null> {
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).catch((error) => {
       console.error("MongoDB connection failed, using JSON fallback:", error);
-      return null;
+      cached!.conn = null;
+      return null as unknown as typeof mongoose;
     });
   }
 

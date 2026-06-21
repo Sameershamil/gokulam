@@ -177,14 +177,14 @@ export const DEFAULT_SITE_DATA: SiteData = {
 const STORAGE_KEY = "gokulam_admin_data";
 
 export function loadSiteData(): SiteData {
-  if (typeof window === "undefined") return defaultData;
+  if (typeof window === "undefined") return DEFAULT_SITE_DATA;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultData;
+    if (!raw) return DEFAULT_SITE_DATA;
     const parsed = JSON.parse(raw) as Partial<SiteData>;
-    return deepMerge(defaultData, parsed) as SiteData;
+    return deepMerge(DEFAULT_SITE_DATA, parsed) as SiteData;
   } catch {
-    return defaultData;
+    return DEFAULT_SITE_DATA;
   }
 }
 
