@@ -6,11 +6,10 @@ const HeroContentSchema = new mongoose.Schema({
   headline1: { type: String, default: 'Explore More,' },
   headline2: { type: String, default: 'Create Memories' },
   subtext: {
-    {
-      type: String,
-      default:
-        'Corporate, Student, Family & Honeymoon Trips Across India — curated with care from Palakkad & Thrissur, Kerala.',
-    },
+    type: String,
+    default:
+      'Corporate, Student, Family & Honeymoon Trips Across India — curated with care from Palakkad & Thrissur, Kerala.',
+  },
   stats: {
     type: [
       {
@@ -86,10 +85,9 @@ const SiteMetaSchema = new mongoose.Schema({
   },
   aboutRating: { type: String, default: '4.9 / 5' },
   aboutRatingLabel: {
-    {
-      type: String,
-      default: 'Rated by 1,200+ travellers across India.',
-    },
+    type: String,
+    default: 'Rated by 1,200+ travellers across India.',
+  },
   footerTagline: {
     type: String,
     default:
