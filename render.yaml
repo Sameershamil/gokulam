@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: gokulam-server
+    env: node
+    plan: starter
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        fromDatabase:
+          name: gokulam-mongo
+          property: connectionString
