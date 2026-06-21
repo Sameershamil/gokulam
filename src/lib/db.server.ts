@@ -1,15 +1,49 @@
 import mongoose, { Schema } from "mongoose";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import type { SiteData } from "@/lib/adminData";
 import { DEFAULT_SITE_DATA } from "@/lib/adminData";
 
+// Get directory for database file (fallback JSON)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DATA_DIR = path.resolve(__dirname, "../../data");
+const DB_PATH = path.join(DATA_DIR, "db.json");
+
+// Ensure data directory exists
+function ensureDataDir() {
+  if (!existsSync(DATA_DIR)) {
+    mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+// Read data from JSON file (fallback)
+function readDBFallback(): SiteData {
+  ensureDataDir();
+  if (existsSync(DB_PATH)) {
+    try {
+      const data = readFileSync(DB_PATH, "utf-8");
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Error reading fallback JSON DB, using defaults:", error);
+      return DEFAULT_SITE_DATA;
+    }
+  } else {
+    writeDBFallback(DEFAULT_SITE_DATA);
+    return DEFAULT_SITE_DATA;
+  }
+}
+
+// Write data to JSON file (fallback)
+function writeDBFallback(data: SiteData): void {
+  ensureDataDir();
+  writeFileSync(DB_PATH, JSON.stringify(data, null, 2), "utf-8");
+}
+
 // MongoDB URI from environment variables
 const MONGODB_URI = process.env.MONGODB_URI || "";
-
-if (!MONGODB_URI) {
-  throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env.local"
-  );
-}
 
 // Mongoose connection caching
 let cached = global.mongoose;
@@ -18,7 +52,12 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-async function dbConnect() {
+async function dbConnect(): Promise<typeof mongoose | null> {
+  if (!MONGODB_URI) {
+    console.warn("MONGODB_URI not set, using JSON fallback");
+    return null;
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
@@ -28,10 +67,12 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
+    cached.promise = mongoose.connect(MONGODB_URI, opts).catch((error) => {
+      console.error("MongoDB connection failed, using JSON fallback:", error);
+      return null;
     });
   }
+
   cached.conn = await cached.promise;
   return cached.conn;
 }
@@ -132,45 +173,58 @@ const SiteDataSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Create or get the SiteData model
-const SiteDataModel =
-  mongoose.models.SiteData || mongoose.model<SiteData>("SiteData", SiteDataSchema);
-
-// Read data from MongoDB
-export async function readDB(): Promise<SiteData> {
-  await dbConnect();
-
-  try {
-    // Try to find the existing site data
-    let siteData = await SiteDataModel.findOne();
-
-    if (!siteData) {
-      // If no data exists, create it with defaults
-      siteData = new SiteDataModel(DEFAULT_SITE_DATA);
-      await siteData.save();
-    }
-
-    // Convert Mongoose document to plain object
-    return siteData.toObject();
-  } catch (error) {
-    console.error("Error reading from MongoDB, using defaults:", error);
-    return DEFAULT_SITE_DATA;
+// Create or get the SiteData model only if connected
+function getSiteDataModel() {
+  if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+    return null;
   }
+  return mongoose.models.SiteData || mongoose.model<SiteData>("SiteData", SiteDataSchema);
 }
 
-// Write data to MongoDB
-export async function writeDB(data: SiteData): Promise<void> {
-  await dbConnect();
+// Read data with fallback
+export async function readDB(): Promise<SiteData> {
+  const conn = await dbConnect();
 
-  try {
-    // Update the existing data or create new if it doesn't exist
-    await SiteDataModel.findOneAndUpdate({}, data, {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true,
-    });
-  } catch (error) {
-    console.error("Error writing to MongoDB:", error);
-    throw error;
+  if (conn) {
+    try {
+      const SiteDataModel = getSiteDataModel();
+      if (SiteDataModel) {
+        let siteData = await SiteDataModel.findOne();
+        if (!siteData) {
+          siteData = new SiteDataModel(DEFAULT_SITE_DATA);
+          await siteData.save();
+        }
+        return siteData.toObject();
+      }
+    } catch (error) {
+      console.error("Error reading from MongoDB, falling back to JSON:", error);
+    }
   }
+
+  return readDBFallback();
+}
+
+// Write data with fallback
+export async function writeDB(data: SiteData): Promise<void> {
+  const conn = await dbConnect();
+
+  if (conn) {
+    try {
+      const SiteDataModel = getSiteDataModel();
+      if (SiteDataModel) {
+        await SiteDataModel.findOneAndUpdate({}, data, {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true,
+        });
+        // Also write to JSON as backup
+        writeDBFallback(data);
+        return;
+      }
+    } catch (error) {
+      console.error("Error writing to MongoDB, falling back to JSON:", error);
+    }
+  }
+
+  writeDBFallback(data);
 }
