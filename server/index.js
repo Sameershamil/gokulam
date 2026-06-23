@@ -28,16 +28,15 @@ app.use(express.json({ limit: '100kb' })); // Body parser with size limit
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Security: Configure CORS
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : [];
+
 const corsOptions = {
   origin:
     NODE_ENV === 'production'
       ? (origin, callback) => {
-          // TODO: Replace with your frontend production domain
-          const allowedOrigins = [
-            'https://yourdomain.com',
-            'https://www.yourdomain.com',
-          ];
-          if (!origin || allowedOrigins.includes(origin)) {
+          if (!origin || allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
             callback(null, true);
           } else {
             callback(new Error('Not allowed by CORS'));
