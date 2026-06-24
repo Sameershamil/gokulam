@@ -29,9 +29,10 @@ const IMG_MAP: Record<string, string> = {
   "dest-kodai": dKodai, "dest-hampi": dHampi,
   "gallery-1": g1, "gallery-2": g2, "gallery-3": g3, "gallery-4": g4,
 };
-function getImg(key: string) { 
+function getImg(key?: string) { 
+  if (!key) return heroImg;
   // If it's already a URL or data URL, return directly
-  if (key.startsWith("http") || key.startsWith("data:")) {
+  if (typeof key === "string" && (key.startsWith("http") || key.startsWith("data:"))) {
     return key;
   }
   // Otherwise use predefined image
@@ -44,7 +45,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Phone, MapPin, Plane, Camera, Coffee, Mountain, Waves,
   Sun, Globe, Building, Car, Train, Ship, Mail, Instagram,
 };
-function getIcon(name: string): React.ElementType { return ICON_MAP[name] ?? Star; }
+function getIcon(name?: string): React.ElementType { 
+  if (!name) return Star;
+  return ICON_MAP[name] ?? Star; 
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({

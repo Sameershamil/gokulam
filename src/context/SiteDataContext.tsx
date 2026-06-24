@@ -9,6 +9,25 @@ import {
 import { DEFAULT_SITE_DATA, type SiteData } from "@/lib/adminData";
 import { getSiteData, saveSiteData } from "@/lib/api/siteData.functions";
 
+// Deep merge utility to ensure we always have all defaults
+function deepMerge(target: unknown, source: unknown): unknown {
+  if (Array.isArray(source)) return source;
+  if (isObject(target) && isObject(source)) {
+    const result: Record<string, unknown> = { ...(target as Record<string, unknown>) };
+    for (const key of Object.keys(source as Record<string, unknown>)) {
+      const sv = (source as Record<string, unknown>)[key];
+      const tv = (target as Record<string, unknown>)[key];
+      result[key] = deepMerge(tv, sv);
+    }
+    return result;
+  }
+  return source !== undefined ? source : target;
+}
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
 interface SiteDataContextValue {
   data: SiteData;
   updateData: (next: SiteData) => void;
@@ -27,7 +46,9 @@ export function SiteDataProvider({ children }: { children: ReactNode }) {
     async function loadData() {
       try {
         const apiData = await getSiteData();
-        setData(apiData);
+        // Merge API data with defaults to ensure all fields exist
+        const mergedData = deepMerge(DEFAULT_SITE_DATA, apiData) as SiteData;
+        setData(mergedData);
       } catch (error) {
         console.error("Error fetching site data, using defaults:", error);
       }
