@@ -33,7 +33,7 @@ function AdminLogin() {
     setError("");
 
     try {
-      const result = await adminLogin({ data: { password } });
+      const result = await adminLogin(password);
       if (result.success) {
         sessionStorage.setItem(AUTH_KEY, "1");
         navigate({ to: "/admin/dashboard" });

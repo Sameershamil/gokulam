@@ -1,57 +1,44 @@
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { DEFAULT_SITE_DATA, type SiteData } from "@/lib/adminData";
 
-// Deep merge utility
-function deepMerge(target: unknown, source: unknown): unknown {
-  if (Array.isArray(source)) return source;
-  if (isObject(target) && isObject(source)) {
-    const result: Record<string, unknown> = { ...(target as Record<string, unknown>) };
-    for (const key of Object.keys(source as Record<string, unknown>)) {
-      const sv = (source as Record<string, unknown>)[key];
-      const tv = (target as Record<string, unknown>)[key];
-      result[key] = deepMerge(tv, sv);
+const API_URL = process.env.PUBLIC_API_URL || "http://localhost:5000";
+
+// Helper to get site data from Render backend
+export async function getSiteData(): Promise<SiteData> {
+  try {
+    const response = await fetch(`${API_URL}/api/site-data`);
+    const result = await response.json();
+    if (result.success) {
+      // Merge with defaults to ensure all fields are present
+      return { ...DEFAULT_SITE_DATA, ...result.data };
     }
-    return result;
+    return DEFAULT_SITE_DATA;
+  } catch (err) {
+    console.error("Error fetching site data:", err);
+    return DEFAULT_SITE_DATA;
   }
-  return source !== undefined ? source : target;
 }
 
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
+// Helper to save site data to Render backend
+export async function saveSiteData(data: SiteData): Promise<{ success: boolean }> {
+  try {
+    const response = await fetch(`${API_URL}/api/site-data`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return await response.json();
+  } catch (err) {
+    console.error("Error saving site data:", err);
+    return { success: false };
+  }
 }
 
-// Helper to ensure clean JSON serialization
-function cleanForSerialization(data: any): SiteData {
-  // Always start with DEFAULT_SITE_DATA and merge in changes
-  const merged = deepMerge(DEFAULT_SITE_DATA, data) as SiteData;
-  // Stringify and parse to remove any non-serializable properties
-  return JSON.parse(JSON.stringify(merged));
-}
-
-export const getSiteData = createServerFn({ method: "GET" }).handler(async () => {
-  const { readDB } = await import("@/lib/db.server");
-  const data = await readDB();
-  return cleanForSerialization(data);
-});
-
-export const saveSiteData = createServerFn({ method: "POST" })
-  .validator(z.any() as z.Schema<SiteData>)
-  .handler(async ({ data }) => {
-    const { writeDB } = await import("@/lib/db.server");
-    // Always merge with defaults before saving
-    const mergedData = deepMerge(DEFAULT_SITE_DATA, data) as SiteData;
-    await writeDB(mergedData);
+// Admin login using ADMIN_PASSWORD from frontend context for now
+// (We can add a login endpoint to Render backend later if needed)
+export async function adminLogin(password: string): Promise<{ success: boolean; error?: string }> {
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "gokulam2024";
+  if (password === ADMIN_PASSWORD) {
     return { success: true };
-  });
-
-// Server-side admin login using environment variable!
-export const adminLogin = createServerFn({ method: "POST" })
-  .validator(z.object({ password: z.string() }))
-  .handler(async ({ data }) => {
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "gokulam2024";
-    if (data.password === ADMIN_PASSWORD) {
-      return { success: true };
-    }
-    return { success: false, error: "Invalid password" };
-  });
+  }
+  return { success: false, error: "Invalid password" };
+}

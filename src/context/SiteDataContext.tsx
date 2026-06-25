@@ -64,9 +64,12 @@ export function SiteDataProvider({ children }: { children: ReactNode }) {
   // Save data to backend
   const saveToServer = useCallback(async (dataToSave: SiteData): Promise<boolean> => {
     try {
-      await saveSiteData({ data: dataToSave });
-      setData(dataToSave); // Update local state on successful save
-      return true;
+      const result = await saveSiteData(dataToSave);
+      if (result.success) {
+        setData(dataToSave); // Update local state on successful save
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error("Error saving to server:", error);
       return false;
